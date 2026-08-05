@@ -99,13 +99,31 @@ class DiscordRPC:
         self.is_showing = False
 
 
+NOWPLAYING_CLI_FALLBACK_PATHS = ['/opt/homebrew/bin/nowplaying-cli', '/usr/local/bin/nowplaying-cli']
+
+
 class KKBOX:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.nowplaying_cli = self._find_nowplaying_cli()
 
-        if shutil.which('nowplaying-cli') is None:
+        if self.nowplaying_cli is None:
             self.logger.error("'nowplaying-cli' not found. Install it with: brew install nowplaying-cli")
             sys.exit(1)
+
+    def _find_nowplaying_cli(self):
+        # apps launched from Finder/Login Items get a minimal PATH that
+        # doesn't include Homebrew's bin dirs, so shutil.which() alone
+        # isn't enough here.
+        found = shutil.which('nowplaying-cli')
+        if found:
+            return found
+
+        for path in NOWPLAYING_CLI_FALLBACK_PATHS:
+            if os.path.isfile(path):
+                return path
+
+        return None
 
     def is_kkbox_running(self):
         for proc in psutil.process_iter(['pid', 'name']):
@@ -122,8 +140,8 @@ class KKBOX:
     def get_player(self) -> Player:
         try:
             result = subprocess.run(
-                ['nowplaying-cli', 'get', '--json', *NOWPLAYING_FIELDS],
-                capture_output=True, text=True, timeout=5
+                [self.nowplaying_cli, 'get', '--json', *NOWPLAYING_FIELDS],
+                capture_output=True, text=True, encoding='utf-8', timeout=5
             )
             data = json.loads(result.stdout)
         except (subprocess.SubprocessError, json.JSONDecodeError):
@@ -208,7 +226,6 @@ class MenuBarApp(rumps.App):
             except Exception as e:
                 self.logger.error(f'Error: {e}')
                 self._set_status(f'錯誤: {e}')
-                break
 
             time.sleep(1)
 
