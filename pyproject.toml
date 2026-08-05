@@ -1,13 +1,16 @@
 [project]
-name = "kkbox-discord-rpc"
-version = "4.0.0"
-description = "This is a tool that allows Discord to display rich KKBOX statuses!"
+name = "kkbox-discord-rpc-macos"
+version = "1.0.0"
+description = "KKBOX Discord Rich Presence for macOS, using the system Now Playing info instead of DOM scraping."
 readme = "README.md"
-requires-python = "==3.12.11"
+requires-python = ">=3.10"
 dependencies = [
     "pypresence @ https://github.com/qwertyquerty/pypresence.git",
-    "pychrome",
     "psutil",
-    "isort",
-    "nuitka"
+    "rumps",
+]
+
+[dependency-groups]
+build = [
+    "py2app",
 ]

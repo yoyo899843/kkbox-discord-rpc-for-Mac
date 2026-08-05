@@ -1,30 +1,74 @@
 <div align="center">
-<h1><img src="./media/icon_128.png" width="30px"> KKBOX Discord RPC</h1>
+<h1><img src="./media/icon_128.png" width="30px"> KKBOX Discord RPC (macOS)</h1>
 
-<img src="https://img.shields.io/github/last-commit/poyu39/kkbox-discord-rpc.svg">
-<img src="https://img.shields.io/github/release/poyu39/kkbox-discord-rpc">
-<img src="https://img.shields.io/github/release/poyu39/kkbox-discord-rpc">
-<img src="https://img.shields.io/github/stars/poyu39/kkbox-discord-rpc?label=Stars">
-
-<p>這是一個可以讓 Discord 顯示 KKBOX 豐富狀態的小工具！</p>
-
-<img src="./media/screenshot.png" alt="應用程式截圖">
-
-<br>
-
-[English](README_en.md) | **繁體中文** | [日本語](README_jp.md)
+<p>Displays KKBOX rich presence on Discord — macOS port.</p>
 
 </div>
 
 ---
 
-## ✨ 使用方法
+## How it works
 
-- 點此下載最新版本的 [KKBOX Discord RPC](https://github.com/poyu39/kkbox-discord-rpc/releases/download/v4.1.3/KKBOX_Discord_RPC_v4.1.3.exe)
+Unlike the [Windows version](../Windows), this does **not** scrape the KKBOX
+window via Chrome DevTools Protocol. On this build of the macOS KKBOX app,
+`--remote-debugging-port` opens the port but the DevTools handler never
+responds (confirmed not to be a firewall/sandbox issue — verified against
+another local HTTP server in the same process).
 
+Instead, this reads track info from macOS's system-wide **Now Playing**
+info (the same source Control Center's media widget uses), via
+[`nowplaying-cli`](https://github.com/nowplaying-cli/nowplaying-cli). KKBOX
+registers `title` / `artist` / `album` / `duration` / `elapsedTime` /
+`playbackRate` there under bundle id `com.kkbox.electron-app`, which this
+script filters on so it only reacts when KKBOX (not Music.app, Safari, etc.)
+is the active Now Playing source.
 
-- 要顯示 KKBOX 的狀態於 Discord，請先執行 `KKBOX_Discord_RPC_v4.1.3.exe`，會自動開啟 KKBOX，此程式會在背景擷取播放內容，若不想使用此功能，可直接開啟官方 `KKBOX.exe`。
+Trade-off: the Now Playing API doesn't expose cover art or a track URL, so
+the Discord card's large image is a static KKBOX icon instead of the
+per-track cover the Windows version shows, and the large-text field shows
+the album name instead of streaming quality.
 
----
+## Requirements
 
-> 本軟體使用 [SignTool](https://github.com/Delphier/SignTool/releases/tag/v10.0.26100.14) 簽證憑證，確保軟體的完整性與安全性，但不一定確保 Windows Defender SmartScreen 不會誤判，若誤判請在保護歷程紀錄中允許此軟體執行。
+- macOS with [KKBOX.app](https://www.kkbox.com/) installed
+- [Homebrew](https://brew.sh/)
+- [uv](https://docs.astral.sh/uv/)
+
+## Setup
+
+```sh
+brew install nowplaying-cli
+cd MacOS
+uv sync
+```
+
+## Run
+
+```sh
+uv run src/app.py
+```
+
+Open KKBOX (or let the script launch it), play a song, and your Discord
+status should switch to "Listening to KKBOX". The app runs as a menu bar
+icon (🎵) showing the current status; click it and choose "結束" to quit.
+Logs are written to `~/Library/Logs/KKBOX Discord RPC/app.log`.
+
+## Building a standalone .app
+
+`uv`'s managed Python has zlib statically linked, which `py2app` can't
+handle, so packaging needs a Python with a dynamic zlib — the
+`python.org` / Homebrew framework build works. Point `uv` at it to build
+a throwaway venv, then run `py2app` from there (pyproject.toml is
+temporarily moved aside because setuptools would otherwise inject
+`install_requires`, which `py2app` rejects):
+
+```sh
+uv venv --python /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 .venv-build
+source .venv-build/bin/activate
+uv pip install psutil rumps py2app "pypresence @ git+https://github.com/qwertyquerty/pypresence.git"
+mv pyproject.toml pyproject.toml.bak && python setup.py py2app; mv pyproject.toml.bak pyproject.toml
+```
+
+The bundle is written to `dist/KKBOX Discord RPC.app`. Drag it into
+`/Applications`, then add it to **System Settings → General → Login
+Items** to launch automatically.
