@@ -1,7 +1,7 @@
 <div align="center">
 <h1><img src="./media/icon_128.png" width="30px"> KKBOX Discord RPC (macOS)</h1>
 
-<p>Displays KKBOX rich presence on Discord — macOS port.</p>
+<p>Displays KKBOX rich presence on Discord — macOS</p>
 
 </div>
 
